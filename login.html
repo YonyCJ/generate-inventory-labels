@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="E:\Label\img\logo.png" alt="Logo" />
+    </div>
+    <form id="loginForm">
+      <input type="text" id="email" placeholder="Correo electrónico" required>
+      <input type="password" id="password" placeholder="Contraseña" required>
+      <div class="checkbox-container">
+        <input type="checkbox" id="rememberMe">
+        <label for="rememberMe">Recordarme</label>
+      </div>
+      <button type="submit">Iniciar Sesión</button>
+      <div class="social-buttons">
+        <button id="googleLogin" type="button"><img src="E:\Label\img\logo.png" alt="Google"> Google Login</button>
+        <button id="facebookLogin" type="button"><img src="E:\Label\img\logo.png" alt="Facebook"> Facebook Login</button>
+      </div>
+    </form>
+  </div>
+  <script src="login.js"></script>
+</body>
+</html>

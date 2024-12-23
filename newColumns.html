@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleccionar y Generar PDF</title>
+    <link rel="stylesheet" href="newColumns.css">
+    <!-- Incluir jsPDF desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button id="select-all-button">Seleccionar todos</button>
+            <button id="config-button">Configurar Etiqueta</button>
+        </header>
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <!-- Este <tr> vacío es necesario para que el script lo pueda manipular -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las filas se generarán dinámicamente aquí -->
+            </tbody>
+        </table>
+        <button id="cancel-button">Cancelar</button>
+    </div>
+
+    <!-- Modal para configurar etiqueta -->
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Configurar Etiqueta</h2>
+            <iframe id="design-iframe" src="design.html" width="100%" height="500px"></iframe>
+            <button id="close-modal">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Modal para Vista Previa del PDF -->
+    <div id="pdf-preview-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-pdf-preview" class="close">&times;</span>
+            <h2>Vista Previa del PDF</h2>
+            <iframe id="pdf-preview-iframe" width="100%" height="600px"></iframe>
+        </div>
+    </div>
+
+    <!-- Modal para elegir la orientación -->
+    <div id="orientation-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-orientation-modal" class="close">&times;</span>
+            <h2>Seleccionar Orientación</h2>
+            <p>¿Qué orientación deseas para el PDF?</p>
+            <button id="portrait-btn">Vertical (Portrait)</button>
+            <button id="landscape-btn">Horizontal (Landscape)</button>
+        </div>
+    </div>
+
+    <script src="newColumns.js"></script>
+</body>
+</html>

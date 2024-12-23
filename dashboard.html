@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Web</title>
+        <script src="E:\Label\xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Encabezado -->
+        <header class="header">
+            <h1>Dashboard</h1>
+        </header>
+        
+        <!-- Barra de botones -->
+        <div class="button-frame">
+            <button id="btn-upload" onclick="uploadFile()">Subir archivo Excel</button>
+            <button id="btn-select-all" onclick="toggleSelectAll()">Seleccionar Todos</button>
+            <button id="btn-generate-qr" onclick="generateQR()">Generar QR</button>
+        </div>
+
+        <!-- Tabla de Datos -->
+        <div class="table-container">
+    <!-- Contenedor con desplazamiento horizontal para pantallas pequeñas -->
+    <div style="overflow-x: auto;">
+        <table id="data-table">
+            <thead>
+                <!-- Los encabezados se llenan dinámicamente con JavaScript -->
+                <tr id="table-header">
+                    <th>Seleccionar</th>
+                    <!-- Las demás columnas se agregarán dinámicamente con JavaScript -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las filas se llenarán dinámicamente con los datos de Excel -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+        <!-- Filtros -->
+        <div class="filter-frame">
+            <label for="filter-column">Columna:</label>
+            <select id="filter-column" onchange="updateFilterValues()">
+                <!-- Opciones generadas dinámicamente -->
+            </select>
+
+            <label for="filter-value">Valor:</label>
+            <select id="filter-value">
+                <!-- Opciones generadas dinámicamente -->
+            </select>
+
+            <button onclick="applyFilter()">Aplicar Filtro</button>
+            <button onclick="clearFilters()">Quitar Filtros</button>
+        </div>
+
+        <!-- Modal para Seleccionar Columnas para QR -->
+        <div id="qr-modal" class="modal">
+            <div class="modal-content">
+                <h2>Seleccionar columnas para el QR</h2>
+                <div id="qr-column-options">
+                    <!-- Checkboxes de las columnas -->
+                </div>
+                <button onclick="confirmQRSelection()">Seleccionar</button>
+                <button onclick="closeQRModal()">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="dashboard.js"></script>
+    </div>
+</body>
+</html>

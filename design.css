@@ -1,0 +1,10 @@
+body {
+  font-family: Arial, sans-serif;
+}
+.toolbar {
+  margin-bottom: 10px;
+}
+canvas {
+  border: 2px dashed red;
+  margin-top: 10px;
+}
