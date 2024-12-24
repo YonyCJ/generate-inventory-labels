@@ -205,10 +205,23 @@ function designToImage() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        const canvasWidth = globalUpdatedDesign.widthMM * 3.77953;
-        const canvasHeight = globalUpdatedDesign.heightMM * 3.77953;
+        // Aumentamos la escala para mejor resolución (factor de 2)
+        const scaleFactor = 2;
+        const mmToPx = 3.77953 * scaleFactor;
+        
+        const canvasWidth = globalUpdatedDesign.widthMM * mmToPx;
+        const canvasHeight = globalUpdatedDesign.heightMM * mmToPx;
+        
+        // Configurar el canvas con las nuevas dimensiones
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
+        
+        // Aplicar configuración para mejor calidad de renderizado
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Escalar el contexto para mantener las proporciones correctas
+        ctx.scale(scaleFactor, scaleFactor);
 
         // Fondo blanco por defecto
         ctx.fillStyle = '#ffffff';
@@ -255,10 +268,56 @@ function designToImage() {
                 ctx.lineWidth = obj.strokeWidth || 1;
                 ctx.stroke();
             } else if (obj.type === 'textbox') {
-                drawTextWithAutoWrap(ctx, obj);
-            } else if (obj.type === 'image') {
+                const maxWidth = obj.width * (obj.scaleX || 1);
+                const maxHeight = obj.height * (obj.scaleY || 1);
+            
+                // Aumentar el tamaño base de la fuente para mejor nitidez
+                let fontSize = obj.fontSize * 0.6 || 16;
+            
+                ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || 'bold'} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
+                ctx.fillStyle = obj.fill || '#000';
+                ctx.textAlign = 'center'; // Centrado horizontal
+                ctx.textBaseline = 'middle'; // Centrado vertical
+            
+                // Mejorar la renderización del texto
+                ctx.textRendering = 'geometricPrecision';
+            
+                // Dividir el texto en líneas si excede el ancho máximo
+                const words = obj.text.split(' ');
+                let line = '';
+                const lines = [];
+                const lineHeight = fontSize * 1.2; // Espaciado entre líneas
+            
+                words.forEach(word => {
+                    const testLine = line + (line ? ' ' : '') + word;
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && line !== '') {
+                        lines.push(line);
+                        line = word;
+                    } else {
+                        line = testLine;
+                    }
+                });
+            
+                lines.push(line);
+            
+                // Calcular la posición inicial para centrar el texto verticalmente
+                const totalHeight = lines.length * lineHeight;
+                let startY = obj.top + maxHeight / 2 - totalHeight / 2;
+            
+                // Dibujar cada línea centrada
+                lines.forEach(line => {
+                    ctx.fillText(line, obj.left + maxWidth / 2, startY + lineHeight / 2);
+                    startY += lineHeight;
+                });
+            }
+             else if (obj.type === 'image') {
                 const img = new Image();
                 img.src = obj.src;
+                
+                // Configurar la calidad de la imagen
+                img.setAttribute('rendering', 'crisp-edges');
+                
                 img.onload = () => {
                     ctx.drawImage(
                         img,
@@ -269,7 +328,7 @@ function designToImage() {
                     );
                     loadedImages++;
                     if (loadedImages === totalImages) {
-                        resolve(canvas.toDataURL('image/png'));
+                        resolve(canvas.toDataURL('image/png', 1.0)); // Máxima calidad
                     }
                 };
                 img.onerror = reject;
@@ -279,7 +338,7 @@ function designToImage() {
         });
 
         if (totalImages === 0) {
-            resolve(canvas.toDataURL('image/png'));
+            resolve(canvas.toDataURL('image/png', 1.0)); // Máxima calidad
         }
     });
 }
@@ -324,36 +383,32 @@ async function generateImageFromDesign() {
 // Función para generar PDF desde el diseño actualizado
 async function generatePDF(orientation = "portrait") {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF(orientation);
+    const doc = new jsPDF(orientation, 'mm', 'a4', true); // Activar compresión mejorada
 
     try {
-        // Generar imagen si no existe
         if (!globalGeneratedImage) {
             await generateImageFromDesign();
         }
 
-        // Verificar que la imagen generada esté en formato correcto
         if (!globalGeneratedImage || !globalGeneratedImage.startsWith('data:image/png;base64,')) {
             throw new Error("La imagen generada no tiene el formato correcto.");
         }
 
         const margin = 1.5;
-        const smallWidth = 50; // Ancho en el PDF
-        const smallHeight = 25; // Alto en el PDF
+        const smallWidth = 50;
+        const smallHeight = 25;
         const xPos = margin;
         const yPos = margin;
 
-        // Agregar imagen al PDF
-        doc.addImage(globalGeneratedImage, 'PNG', xPos, yPos, smallWidth, smallHeight);
+        // Agregar imagen con mejor calidad
+        doc.addImage(globalGeneratedImage, 'PNG', xPos, yPos, smallWidth, smallHeight, '', 'FAST', 0);
 
-        // Previsualizar el PDF
         const pdfOutput = doc.output('bloburl');
         const previewModal = document.getElementById("pdf-preview-modal");
         const previewIframe = document.getElementById("pdf-preview-iframe");
         previewIframe.src = pdfOutput;
         previewModal.style.display = "flex";
 
-        console.log("PDF generado correctamente.");
     } catch (error) {
         console.error("Error al generar el PDF:", error);
     }
