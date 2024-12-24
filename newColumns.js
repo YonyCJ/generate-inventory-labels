@@ -1,117 +1,118 @@
+let globalUpdatedDesign;
+let globalGeneratedImage;
+
 document.addEventListener('DOMContentLoaded', function () {
-    // Leer los datos guardados en localStorage
     const tableData = JSON.parse(localStorage.getItem('qrTableData'));
-    const savedDesign = JSON.parse(localStorage.getItem('savedDesign')); // Obtener el diseño guardado
+    const savedDesign = JSON.parse(localStorage.getItem('savedDesign'));
 
     console.log(tableData);
-    // Verificamos si los datos existen
     if (!tableData) {
         alert("No se encontraron datos en localStorage.");
         return;
     }
 
-    const { columns, rows } = tableData; // Extraemos las columnas y filas del objeto guardado
-
-    // Verificamos que el elemento de la tabla esté presente
+    const { columns, rows } = tableData;
     const tableHead = document.querySelector("#data-table thead tr");
 
-    // Verificar si se obtuvo el encabezado correctamente
     if (!tableHead) {
         console.error("No se encontró el encabezado de la tabla.");
         return;
     }
 
-    // Limpiamos los encabezados actuales y agregamos las columnas seleccionadas
-    tableHead.innerHTML = ''; // Limpiamos los encabezados actuales
+    tableHead.innerHTML = '';
 
-    // Agregar encabezado "Seleccionar"
     const thCheck = document.createElement("th");
     thCheck.textContent = "Seleccionar";
     tableHead.appendChild(thCheck);
 
-    // Agregar las columnas seleccionadas como encabezados de la tabla
     columns.forEach(col => {
         const th = document.createElement("th");
-        th.textContent = col; // Nombre de la columna
+        th.textContent = col;
         tableHead.appendChild(th);
     });
 
-    // Agregar columna para "Generar"
     const thGenerate = document.createElement("th");
     thGenerate.textContent = "Generar";
     tableHead.appendChild(thGenerate);
 
-    // Rellenar el cuerpo de la tabla con las filas de datos
     const tableBody = document.querySelector("#data-table tbody");
 
-    // Verificar si se obtuvo el cuerpo de la tabla correctamente
     if (!tableBody) {
         console.error("No se encontró el cuerpo de la tabla.");
         return;
     }
 
-    tableBody.innerHTML = ''; // Limpiar las filas actuales
+    tableBody.innerHTML = '';
 
-    // Agregar filas a la tabla
+    // Función para manejar la orientación
+    function handleOrientation(orientation, rowData, savedDesign, columns) {
+        const orientationModal = document.getElementById("orientation-modal");
+        orientationModal.style.display = "none";
+        
+        globalUpdatedDesign = updateDesignWithData(rowData, savedDesign, columns);
+        console.log('Diseño global actualizado:', globalUpdatedDesign);
+        
+        generateImageFromDesign()
+            .then(() => {
+                console.log('Imagen global generada:', globalGeneratedImage);
+                generatePDF(rowData, savedDesign, columns, orientation);
+            })
+            .catch(error => console.error("Error en el proceso:", error));
+    }
+
     rows.forEach((rowData) => {
         const tr = document.createElement("tr");
 
-        // Crear celda de checkbox para seleccionar la fila
         const tdCheck = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         tdCheck.appendChild(checkbox);
         tr.appendChild(tdCheck);
 
-        // Llenar las celdas de la fila con los datos de cada columna seleccionada
         columns.forEach((col) => {
             const td = document.createElement("td");
-            td.textContent = rowData[col] || ""; // Mostrar el valor o vacío si no existe
+            td.textContent = rowData[col] || "";
             tr.appendChild(td);
         });
 
-        // Columna para generar acción (Generar QR)
         const tdGenerate = document.createElement("td");
         const generateButton = document.createElement("button");
-        generateButton.textContent = "Generar QR"; // Botón para generar el QR
+        generateButton.textContent = "Generar QR";
         tdGenerate.appendChild(generateButton);
         tr.appendChild(tdGenerate);
 
-        // Agregar la fila a la tabla
         tableBody.appendChild(tr);
 
-        // Event listener para generar PDF al hacer clic en "Generar QR"
         generateButton.addEventListener('click', function () {
-            // Mostrar el modal para seleccionar la orientación
             const orientationModal = document.getElementById("orientation-modal");
             orientationModal.style.display = "flex";
 
-            // Función para manejar la orientación seleccionada
-            document.getElementById("portrait-btn").addEventListener("click", function () {
-                orientationModal.style.display = "none"; // Ocultar el modal de orientación
-                generatePDF(rowData, savedDesign, columns, "portrait");
-            });
+            const portraitBtn = document.getElementById("portrait-btn");
+            const landscapeBtn = document.getElementById("landscape-btn");
 
-            document.getElementById("landscape-btn").addEventListener("click", function () {
-                orientationModal.style.display = "none"; // Ocultar el modal de orientación
-                generatePDF(rowData, savedDesign, columns, "landscape");
-            });
+            // Remover listeners anteriores
+            const newPortraitBtn = portraitBtn.cloneNode(true);
+            const newLandscapeBtn = landscapeBtn.cloneNode(true);
+            portraitBtn.parentNode.replaceChild(newPortraitBtn, portraitBtn);
+            landscapeBtn.parentNode.replaceChild(newLandscapeBtn, landscapeBtn);
+
+            // Agregar nuevos listeners
+            newPortraitBtn.addEventListener("click", () => handleOrientation("portrait", rowData, savedDesign, columns));
+            newLandscapeBtn.addEventListener("click", () => handleOrientation("landscape", rowData, savedDesign, columns));
         });
     });
 
-    // Funcionalidad para el botón Cancelar
     const cancelButton = document.getElementById("cancel-button");
     cancelButton.addEventListener("click", function () {
-        // Redirigir a dashboard.html al hacer clic en "Cancelar"
-        window.location.href = "dashboard.html"; // Cambia esta ruta si es necesario
+        window.location.href = "dashboard.html";
     });
 });
 
-
 // Función para actualizar el diseño con los datos de la fila
 function updateDesignWithData(rowData, savedDesign, columns) {
+    const updatedDesign = JSON.parse(JSON.stringify(savedDesign)); // Crear copia profunda
     // Recorremos los objetos del diseño guardado
-    savedDesign.design.objects.forEach(obj => {
+    updatedDesign.design.objects.forEach(obj => {
         if (obj.type === "textbox") {
             // Verificar si el texto del objeto coincide con una columna
             const columnMatch = columns.find(column => column === obj.text);
@@ -121,115 +122,243 @@ function updateDesignWithData(rowData, savedDesign, columns) {
             }
         }
     });
-
-    // Almacenar el diseño actualizado en localStorage
-    localStorage.setItem('savedDesign', JSON.stringify(savedDesign));
-    return savedDesign;
+    return updatedDesign;
+}
+// Función auxiliar para calcular el tamaño de texto que se ajuste al ancho disponible
+function calculateFittingFontSize(ctx, text, maxWidth, maxHeight, fontSize) {
+    let currentSize = fontSize;
+    
+    // Reducir el tamaño de la fuente hasta que el texto quepa en el ancho
+    while (currentSize > 0) {
+        ctx.font = `${currentSize}px Arial`;
+        const textWidth = ctx.measureText(text).width;
+        if (textWidth <= maxWidth && currentSize <= maxHeight) {
+            return currentSize;
+        }
+        currentSize--;
+    }
+    return currentSize;
 }
 
-// Función para convertir el diseño a imagen
-// Función para convertir el diseño a imagen
-function designToImage(savedDesign, columns) {
+// Primero las funciones auxiliares necesarias
+function calculateTextLines(ctx, text, maxWidth, fontSize) {
+    ctx.font = `${fontSize}px Arial`;
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0];
+
+    for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        const width = ctx.measureText(currentLine + " " + word).width;
+        if (width < maxWidth) {
+            currentLine += " " + word;
+        } else {
+            lines.push(currentLine);
+            currentLine = word;
+        }
+    }
+    lines.push(currentLine);
+    return lines;
+}
+
+function drawTextWithAutoWrap(ctx, obj) {
+    const maxWidth = obj.width * (obj.scaleX || 1);
+    const maxHeight = obj.height * (obj.scaleY || 1);
+    let fontSize = obj.fontSize || 16;
+    
+    // Empezar con el tamaño de fuente original
+    ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || ''} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
+    
+    // Calcular las líneas con el tamaño de fuente actual
+    let lines = calculateTextLines(ctx, obj.text, maxWidth, fontSize);
+    
+    // Reducir el tamaño de la fuente si el texto es demasiado alto
+    while (lines.length * (fontSize * 1.2) > maxHeight && fontSize > 8) {
+        fontSize--;
+        ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || ''} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
+        lines = calculateTextLines(ctx, obj.text, maxWidth, fontSize);
+    }
+    
+    // Dibujar cada línea de texto
+    const lineHeight = fontSize * 1.2;
+    const totalTextHeight = lines.length * lineHeight;
+    let startY = obj.top + (maxHeight - totalTextHeight) / 2 + fontSize;
+    
+    ctx.fillStyle = obj.fill || '#000000';
+    ctx.textAlign = obj.textAlign || 'left';
+    
+    lines.forEach((line, index) => {
+        let x = obj.left;
+        if (obj.textAlign === 'center') {
+            x = obj.left + maxWidth / 2;
+        } else if (obj.textAlign === 'right') {
+            x = obj.left + maxWidth;
+        }
+        
+        ctx.fillText(line, x, startY + index * lineHeight);
+    });
+}
+
+// La función principal actualizada
+function designToImage() {
     return new Promise((resolve, reject) => {
-        // Crear un canvas para dibujar el diseño
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Definir las dimensiones del canvas según el diseño (en pixeles)
-        const canvasWidth = savedDesign.widthMM * 3.77953; // Convertir mm a px
-        const canvasHeight = savedDesign.heightMM * 3.77953; // Convertir mm a px
+
+        const canvasWidth = globalUpdatedDesign.widthMM * 3.77953;
+        const canvasHeight = globalUpdatedDesign.heightMM * 3.77953;
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
+
+        // Fondo blanco por defecto
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
         let loadedImages = 0;
         let totalImages = 0;
 
-        // Contamos cuántas imágenes necesitamos cargar
-        savedDesign.design.objects.forEach(obj => {
-            if (obj.type === 'image') {
-                totalImages++;
-            }
+        globalUpdatedDesign.design.objects.forEach(obj => {
+            if (obj.type === 'image') totalImages++;
         });
 
-        // Dibujar los objetos del diseño en el canvas
-        savedDesign.design.objects.forEach(obj => {
+        // Dibujar objetos en el canvas
+        globalUpdatedDesign.design.objects.forEach(obj => {
+            ctx.save();
+
+            if (obj.angle) {
+                const centerX = obj.left + (obj.width * (obj.scaleX || 1)) / 2;
+                const centerY = obj.top + (obj.height * (obj.scaleY || 1)) / 2;
+                ctx.translate(centerX, centerY);
+                ctx.rotate((obj.angle * Math.PI) / 180);
+                ctx.translate(-centerX, -centerY);
+            }
+
             if (obj.type === 'rect') {
-                ctx.fillStyle = obj.fill || 'transparent';
-                ctx.fillRect(obj.left, obj.top, obj.width, obj.height);
+                if (obj.rx && obj.ry) {
+                    roundRect(ctx, obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1), obj.rx, obj);
+                } else {
+                    if (obj.fill && obj.fill !== 'transparent') {
+                        ctx.fillStyle = obj.fill;
+                        ctx.fillRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
+                    }
+                    if (obj.stroke && obj.strokeWidth) {
+                        ctx.strokeStyle = obj.stroke;
+                        ctx.lineWidth = obj.strokeWidth;
+                        ctx.strokeRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
+                    }
+                }
             } else if (obj.type === 'line') {
                 ctx.beginPath();
-                ctx.moveTo(obj.x1, obj.y1);
-                ctx.lineTo(obj.x2, obj.y2);
+                ctx.moveTo(obj.x1 + obj.left, obj.y1 + obj.top);
+                ctx.lineTo(obj.x2 + obj.left, obj.y2 + obj.top);
                 ctx.strokeStyle = obj.stroke || '#000';
                 ctx.lineWidth = obj.strokeWidth || 1;
                 ctx.stroke();
             } else if (obj.type === 'textbox') {
-                ctx.font = `${obj.fontSize}px Arial`;
-                ctx.fillText(obj.text, obj.left, obj.top + obj.fontSize);
+                drawTextWithAutoWrap(ctx, obj);
             } else if (obj.type === 'image') {
                 const img = new Image();
                 img.src = obj.src;
                 img.onload = () => {
-                    ctx.drawImage(img, obj.left, obj.top, obj.width, obj.height);
+                    ctx.drawImage(
+                        img,
+                        obj.left,
+                        obj.top,
+                        obj.width * (obj.scaleX || 1),
+                        obj.height * (obj.scaleY || 1)
+                    );
                     loadedImages++;
-
-                    // Si todas las imágenes están cargadas, resolvemos la promesa
                     if (loadedImages === totalImages) {
-                        resolve(canvas.toDataURL('image/png')); // Esto devuelve la imagen en base64
+                        resolve(canvas.toDataURL('image/png'));
                     }
                 };
-                img.onerror = reject;  // Si hay un error al cargar la imagen, rechazamos la promesa
+                img.onerror = reject;
             }
+
+            ctx.restore();
         });
 
-        // Si no hay imágenes en el diseño, resolvemos la promesa directamente
         if (totalImages === 0) {
             resolve(canvas.toDataURL('image/png'));
         }
     });
 }
 
+// Función auxiliar para dibujar rectángulos redondeados
+function roundRect(ctx, x, y, width, height, radius, obj) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    
+    if (obj.fill && obj.fill !== 'transparent') {
+        ctx.fillStyle = obj.fill;
+        ctx.fill();
+    }
+    if (obj.stroke && obj.strokeWidth) {
+        ctx.strokeStyle = obj.stroke;
+        ctx.lineWidth = obj.strokeWidth;
+        ctx.stroke();
+    }
+}
 
-// Función para generar el PDF y mostrarlo en el modal de vista previa
-async function generatePDF(rowData, savedDesign, columns, orientation = "portrait") {
+async function generateImageFromDesign() {
+    try {
+        // Generar imagen desde globalUpdatedDesign
+        const generatedImage = await designToImage();
+        globalGeneratedImage = generatedImage; // Guardar imagen globalmente
+        return generatedImage;
+    } catch (error) {
+        console.error("Error generando imagen:", error);
+        throw error;
+    }
+}
+
+// Función para generar PDF desde el diseño actualizado
+async function generatePDF(orientation = "portrait") {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF(orientation);
 
     try {
-        // Convertir el diseño a imagen (base64) de forma asincrónica
-        const designImage = await designToImage(savedDesign, columns);
+        // Generar imagen si no existe
+        if (!globalGeneratedImage) {
+            await generateImageFromDesign();
+        }
 
-        // Verificar si el diseño tiene el formato adecuado
-        if (!designImage || !designImage.startsWith('data:image/png;base64,')) {
+        // Verificar que la imagen generada esté en formato correcto
+        if (!globalGeneratedImage || !globalGeneratedImage.startsWith('data:image/png;base64,')) {
             throw new Error("La imagen generada no tiene el formato correcto.");
         }
 
-        // Definir márgenes de la página
-        const margin = 1.5;  // Margen de 1.5 mm
-        const pageWidth = orientation === "portrait" ? 210 : 297;
-        const pageHeight = orientation === "portrait" ? 297 : 210;
+        const margin = 1.5;
+        const smallWidth = 50; // Ancho en el PDF
+        const smallHeight = 25; // Alto en el PDF
+        const xPos = margin;
+        const yPos = margin;
 
-        // ** Nuevo tamaño pequeño fijo para la imagen **
-        const smallWidth = 50;  // Ancho en mm
-        const smallHeight = 25;  // Alto en mm
+        // Agregar imagen al PDF
+        doc.addImage(globalGeneratedImage, 'PNG', xPos, yPos, smallWidth, smallHeight);
 
-        // ** Posicionar la imagen en la parte superior izquierda con un margen de 1.5 mm **
-        const xPos = margin;  // Margen a la izquierda
-        const yPos = margin;  // Margen superior
-
-        // Insertar la imagen redimensionada en el PDF (tamaño pequeño fijo)
-        doc.addImage(designImage, 'PNG', xPos, yPos, smallWidth, smallHeight);
-
-        // Mostrar el PDF en el modal de vista previa
+        // Previsualizar el PDF
         const pdfOutput = doc.output('bloburl');
         const previewModal = document.getElementById("pdf-preview-modal");
         const previewIframe = document.getElementById("pdf-preview-iframe");
         previewIframe.src = pdfOutput;
         previewModal.style.display = "flex";
+
+        console.log("PDF generado correctamente.");
     } catch (error) {
         console.error("Error al generar el PDF:", error);
     }
 }
+
 
 
 
@@ -280,3 +409,81 @@ window.onclick = function(event) {
         pdfPreviewModal.style.display = "none"; // Oculta el modal de vista previa
     }
 }
+
+
+
+
+
+
+
+
+
+
+function generateImageFromSavedDesign() {
+    const savedDesign = JSON.parse(localStorage.getItem('savedDesign'));
+
+    if (!savedDesign || !savedDesign.design || !savedDesign.design.objects) {
+        console.error("No se encontró el diseño o los objetos en el diseño.");
+        return;
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Configura el tamaño del lienzo en función del diseño guardado
+    const canvasWidth = savedDesign.widthMM * 3.77953; // Convertir de milímetros a píxeles
+    const canvasHeight = savedDesign.heightMM * 3.77953;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    let loadedImages = 0;
+    let totalImages = 0;
+
+    // Contamos el número de objetos de tipo imagen para esperar que se carguen todos
+    savedDesign.design.objects.forEach(obj => {
+        if (obj.type === 'image') {
+            totalImages++;
+        }
+    });
+
+    // Dibuja los objetos en el lienzo
+    savedDesign.design.objects.forEach(obj => {
+        if (obj.type === 'rect') {
+            ctx.fillStyle = obj.fill || 'transparent';
+            ctx.fillRect(obj.left, obj.top, obj.width, obj.height);
+        } else if (obj.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(obj.x1, obj.y1);
+            ctx.lineTo(obj.x2, obj.y2);
+            ctx.strokeStyle = obj.stroke || '#000';
+            ctx.lineWidth = obj.strokeWidth || 1;
+            ctx.stroke();
+        } else if (obj.type === 'textbox') {
+            ctx.font = `${obj.fontSize}px Arial`;
+            ctx.fillText(obj.text, obj.left, obj.top + obj.fontSize);
+        } else if (obj.type === 'image') {
+            const img = new Image();
+            img.src = obj.src;
+            img.onload = () => {
+                ctx.drawImage(img, obj.left, obj.top, obj.width, obj.height);
+                loadedImages++;
+                // Cuando se han cargado todas las imágenes, imprimimos la imagen generada
+                if (loadedImages === totalImages) {
+                    const generatedImage = canvas.toDataURL('image/png');
+                    console.log('Imagen generada desde el diseño original:', generatedImage);
+                }
+            };
+            img.onerror = () => {
+                console.error('Error al cargar la imagen:', obj.src);
+            };
+        }
+    });
+
+    // Si no hay imágenes, generamos la imagen directamente
+    if (totalImages === 0) {
+        const generatedImage = canvas.toDataURL('image/png');
+        console.log('Imagen generada desde el diseño original (sin imágenes):', generatedImage);
+    }
+}
+
+generateImageFromSavedDesign();

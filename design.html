@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editor de Diseño con Fabric.js</title>
   <link rel="stylesheet" href="design.css">
+  <!-- Enlace a Fabric.js y jsPDF desde CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
 </head>
 <body>
   <!-- Barra de herramientas -->
@@ -28,17 +30,25 @@
     <button id="addLine">Añadir Línea</button>
     <button id="deleteSelected">Eliminar Selección</button>
     <button id="saveDesign">Guardar Diseño</button>
+    <button id="previewDesign">Previsualizar como Imagen</button>
+    <button id="previewPDF">Previsualizar como PDF</button>
   </div>
-
-  <!-- Lista de columnas -->
-  <div id="columnsList">
-    <h3>Selecciona las columnas a agregar:</h3>
-    <!-- Se generarán dinámicamente las columnas aquí -->
-  </div>
+  <!-- Elemento para mostrar las columnas -->
+  <div id="columnsList" style="margin-top: 20px;"></div>
 
   <!-- Canvas de Fabric.js -->
-  <canvas id="canvas"></canvas>
+  <div id="canvasContainer" style="border: 1px solid #ccc; margin-top: 20px;">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- Elemento para previsualizar la imagen -->
+  <div id="previewContainer" style="display: none; margin-top: 20px;">
+    <h3>Previsualización del diseño:</h3>
+    <img id="previewImage" src="" alt="Previsualización" />
+  </div>
+
   
+
   <script src="design.js"></script>
 </body>
 </html>

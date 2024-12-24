@@ -9,21 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedDesign = localStorage.getItem('savedDesign');
   if (savedDesign) {
     try {
-      const savedData = JSON.parse(savedDesign);  // Intentar parsear el JSON
+      const savedData = JSON.parse(savedDesign);
 
       if (savedData && savedData.design) {
-        const designObject = savedData.design;  // El diseño serializado en JSON (ya es un objeto)
-        const widthMM = savedData.widthMM;  // Ancho en mm
-        const heightMM = savedData.heightMM;  // Alto en mm
+        const designObject = savedData.design;
+        const widthMM = savedData.widthMM;
+        const heightMM = savedData.heightMM;
 
         // Restaurar el diseño en el lienzo
         canvas.loadFromJSON(designObject, canvas.renderAll.bind(canvas));
 
         // Restaurar el tamaño del lienzo en milímetros
-        canvas.setWidth(widthMM * 3.77953);  // Convertir a píxeles
-        canvas.setHeight(heightMM * 3.77953);  // Convertir a píxeles
+        canvas.setWidth(widthMM * 3.77953);
+        canvas.setHeight(heightMM * 3.77953);
 
-        // También puedes actualizar los campos de entrada de tamaño si es necesario
+        // Actualizar los campos de entrada de tamaño
         document.getElementById('width').value = widthMM;
         document.getElementById('height').value = heightMM;
       }
@@ -38,21 +38,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Mostrar las columnas disponibles en el HTML
   const columnsListDiv = document.getElementById('columnsList');
-  columns.forEach((column, index) => {
-    const button = document.createElement('button');
-    button.innerText = column;
-    button.addEventListener('click', () => {
-      // Agregar la columna al canvas como texto
-      const text = new fabric.Textbox(column, {
-        left: 50,
-        top: 50 + (index * 30),  // Se coloca con un desplazamiento vertical para no superponerse
-        fontSize: 20,
-        fill: 'black',
+  if (columnsListDiv) {
+    columns.forEach((column, index) => {
+      const button = document.createElement('button');
+      button.innerText = column;
+      button.addEventListener('click', () => {
+        const text = new fabric.Textbox(column, {
+          left: 50,
+          top: 50 + index * 30,
+          fontSize: 20,
+          fill: 'black',
+        });
+        canvas.add(text);
       });
-      canvas.add(text);
+      columnsListDiv.appendChild(button);
     });
-    columnsListDiv.appendChild(button);
-  });
+  } else {
+    console.error("El contenedor 'columnsList' no se encuentra en el DOM.");
+  }
 
   // Cambiar tamaño del lienzo
   document.getElementById('canvasSize').addEventListener('change', function () {
@@ -71,13 +74,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('width').addEventListener('input', function () {
-    canvas.setWidth(this.value * 3.77953);
+    if (!document.getElementById('width').disabled) {
+      canvas.setWidth(this.value * 3.77953);
+    }
   });
 
   document.getElementById('height').addEventListener('input', function () {
-    canvas.setHeight(this.value * 3.77953);
+    if (!document.getElementById('height').disabled) {
+      canvas.setHeight(this.value * 3.77953);
+    }
   });
 
+  // Agregar texto
   document.getElementById('addText').addEventListener('click', () => {
     const text = new fabric.Textbox('Texto editable', {
       left: 100,
@@ -88,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.add(text);
   });
 
+  // Agregar imagen
   document.getElementById('addImage').addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -108,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   });
 
+  // Agregar forma
   document.getElementById('addShape').addEventListener('click', () => {
     const rect = new fabric.Rect({
       left: 50,
@@ -123,18 +133,18 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.add(rect);
   });
 
+  // Agregar línea
   document.getElementById('addLine').addEventListener('click', () => {
     const line = new fabric.Line([50, 50, 200, 50], {
-      left: 50,         // Posición inicial de la línea en X
-      top: 50,          // Posición inicial de la línea en Y
-      stroke: 'black',  // Color de la línea
-      strokeWidth: 2,   // Grosor de la línea
+      left: 50,
+      top: 50,
+      stroke: 'black',
+      strokeWidth: 2,
     });
-
-    // Añadir la línea al canvas
     canvas.add(line);
   });
 
+  // Eliminar objeto seleccionado
   document.getElementById('deleteSelected').addEventListener('click', () => {
     const activeObject = canvas.getActiveObject();
     if (activeObject) {
@@ -142,22 +152,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Guardar diseño
   document.getElementById('saveDesign').addEventListener('click', () => {
-    // Obtener el tamaño del lienzo en milímetros
-    const widthMM = canvas.getWidth() / 3.77953;  // Convertir a mm
-    const heightMM = canvas.getHeight() / 3.77953; // Convertir a mm
+    const widthMM = canvas.getWidth() / 3.77953;
+    const heightMM = canvas.getHeight() / 3.77953;
 
-    // Serializar el diseño en JSON (ya está listo para ser guardado)
     const designJSON = canvas.toJSON();
 
-    // Guardar el diseño y el tamaño en localStorage
     const savedDesign = {
-      design: designJSON,  // El objeto JSON con los elementos del lienzo
-      widthMM: widthMM,     // Guardar el ancho en mm
-      heightMM: heightMM,   // Guardar el alto en mm
+      design: designJSON,
+      widthMM: widthMM,
+      heightMM: heightMM,
     };
     localStorage.setItem('savedDesign', JSON.stringify(savedDesign));
 
     console.log('Diseño y tamaño guardado en localStorage');
+  });
+
+  // Función para previsualizar el diseño como imagen
+  document.getElementById('previewDesign').addEventListener('click', () => {
+    const savedDesign = localStorage.getItem('savedDesign');
+    if (savedDesign) {
+      try {
+        const savedData = JSON.parse(savedDesign);
+
+        // Crear un canvas temporal para generar la imagen
+        const tempCanvas = new fabric.Canvas(null, {
+          width: savedData.widthMM * 3.77953,
+          height: savedData.heightMM * 3.77953,
+          backgroundColor: '#ffffff',
+        });
+
+        // Cargar el diseño en el canvas temporal
+        tempCanvas.loadFromJSON(savedData.design, () => {
+          // Generar la imagen como dataURL
+          const dataURL = tempCanvas.toDataURL({ format: 'png' });
+
+          // Obtener el contenedor y la imagen de previsualización
+          const previewContainer = document.getElementById('previewContainer');
+          const previewImage = document.getElementById('previewImage');
+
+          // Hacer visible el contenedor de la previsualización
+          previewContainer.style.display = 'block';
+
+          // Asignar la imagen generada al src de la imagen
+          previewImage.src = dataURL;
+
+          console.log('Previsualización generada como imagen', dataURL);
+        });
+      } catch (error) {
+        console.error('Error al generar la previsualización como imagen:', error);
+      }
+    } else {
+      console.log('No hay diseño guardado para previsualizar');
+    }
   });
 });
