@@ -456,9 +456,15 @@ async function generateImageFromDesign() {
 }
 
 // Función para generar PDF desde el diseño actualizado
-async function generatePDF(orientation = "portrait") {
+async function generatePDF(rowData, savedDesign, columns, orientation = "portrait") {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF(orientation, 'mm', 'a4', true); // Activar compresión mejorada
+    // Crear el documento PDF con la orientación especificada
+    const doc = new jsPDF({
+        orientation: orientation, // Usar la orientación pasada como parámetro
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+    });
 
     try {
         if (!globalGeneratedImage) {
@@ -470,6 +476,18 @@ async function generatePDF(orientation = "portrait") {
         }
 
         const margin = 1.5;
+        
+        // Ajustar dimensiones según la orientación
+        let pageWidth, pageHeight;
+        if (orientation === "landscape") {
+            pageWidth = 297; // A4 landscape width in mm
+            pageHeight = 210; // A4 landscape height in mm
+        } else {
+            pageWidth = 210; // A4 portrait width in mm
+            pageHeight = 297; // A4 portrait height in mm
+        }
+
+        // Calcular dimensiones para la imagen
         const smallWidth = 50;
         const smallHeight = 25;
         const xPos = margin;
