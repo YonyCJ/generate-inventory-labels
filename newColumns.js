@@ -201,43 +201,40 @@ function calculateTextLines(ctx, text, maxWidth, fontSize) {
     return lines;
 }
 
+
 function drawTextWithAutoWrap(ctx, obj) {
     const maxWidth = obj.width * (obj.scaleX || 1);
     const maxHeight = obj.height * (obj.scaleY || 1);
     let fontSize = obj.fontSize || 16;
-    
-    // Empezar con el tamaño de fuente original
+
+    // Establecer el tamaño de fuente
     ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || ''} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
-    
+
     // Calcular las líneas con el tamaño de fuente actual
     let lines = calculateTextLines(ctx, obj.text, maxWidth, fontSize);
-    
+
     // Reducir el tamaño de la fuente si el texto es demasiado alto
     while (lines.length * (fontSize * 1.2) > maxHeight && fontSize > 8) {
         fontSize--;
         ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || ''} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
         lines = calculateTextLines(ctx, obj.text, maxWidth, fontSize);
     }
-    
-    // Dibujar cada línea de texto
+
+    // Calcular el alto de cada línea de texto
     const lineHeight = fontSize * 1.2;
     const totalTextHeight = lines.length * lineHeight;
     let startY = obj.top + (maxHeight - totalTextHeight) / 2 + fontSize;
-    
+
     ctx.fillStyle = obj.fill || '#000000';
-    ctx.textAlign = obj.textAlign || 'left';
-    
+    ctx.textAlign = 'right';  // Alineación de cada línea de texto a la derecha
+
+    // Dibujar cada línea de texto
     lines.forEach((line, index) => {
-        let x = obj.left;
-        if (obj.textAlign === 'center') {
-            x = obj.left + maxWidth / 2;
-        } else if (obj.textAlign === 'right') {
-            x = obj.left + maxWidth;
-        }
-        
+        let x = obj.left + maxWidth;  // Alineación a la derecha (empezar desde la derecha)
         ctx.fillText(line, x, startY + index * lineHeight);
     });
 }
+
 
 
 
