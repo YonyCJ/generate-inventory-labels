@@ -1,5 +1,6 @@
 let globalUpdatedDesign;
 let globalGeneratedImage;
+let globalGeneratedQRCode;  // Nueva variable para almacenar el QR generado
 
 document.addEventListener('DOMContentLoaded', function () {
     const tableData = JSON.parse(localStorage.getItem('qrTableData'));
@@ -54,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         generateImageFromDesign()
             .then(() => {
-                console.log('Imagen global generada:', globalGeneratedImage);
+                //console.log('Imagen global generada:', globalGeneratedImage);
                 generatePDF(rowData, savedDesign, columns, orientation);
             })
             .catch(error => console.error("Error en el proceso:", error));
@@ -99,6 +100,20 @@ document.addEventListener('DOMContentLoaded', function () {
             // Agregar nuevos listeners
             newPortraitBtn.addEventListener("click", () => handleOrientation("portrait", rowData, savedDesign, columns));
             newLandscapeBtn.addEventListener("click", () => handleOrientation("landscape", rowData, savedDesign, columns));
+
+            // GENERAR EL QR CON LA INFORMACION DE LA FILA SELECCIONADA
+            generateQRCode(rowData)  // Aquí pasamos los datos de la fila seleccionada
+                .then(qrImage => {
+                    // Almacenar el QR generado en la nueva variable global
+                    globalGeneratedQRCode = qrImage;
+                    console.log("QR generado y almacenado:", globalGeneratedQRCode);
+
+                    // Después de guardar el QR en la variable global, lo puedes usar en cualquier lugar
+                    // Por ejemplo, lo puedes agregar a un diseño, o usarlo más tarde en el código.
+                })
+                .catch(error => {
+                    console.error("Error al generar el QR", error);
+                });
         });
     });
 
@@ -107,6 +122,31 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = "dashboard.html";
     });
 });
+
+// Función para generar el código QR a partir de los datos
+function generateQRCode(data) {
+    return new Promise((resolve, reject) => {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(JSON.stringify(data))}&size=200x200`;
+
+        fetch(qrUrl)
+            .then(response => response.blob())
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    // Almacenar la imagen como base64 en la variable global
+                    globalGeneratedQRCode = reader.result;  // Base64 de la imagen QR
+                    resolve(globalGeneratedQRCode);  // Devolver el base64
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);  // Convertir la imagen en base64
+            })
+            .catch(error => reject(error));
+    });
+}
+
+
+
+
 
 // Función para actualizar el diseño con los datos de la fila
 function updateDesignWithData(rowData, savedDesign, columns) {
@@ -199,149 +239,184 @@ function drawTextWithAutoWrap(ctx, obj) {
     });
 }
 
-// La función principal actualizada
+
+
+
+
+
 function designToImage() {
-    return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+    return new Promise(async (resolve, reject) => {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
 
-        // Aumentamos la escala para mejor resolución (factor de 2)
-        const scaleFactor = 2;
-        const mmToPx = 3.77953 * scaleFactor;
-        
-        const canvasWidth = globalUpdatedDesign.widthMM * mmToPx;
-        const canvasHeight = globalUpdatedDesign.heightMM * mmToPx;
-        
-        // Configurar el canvas con las nuevas dimensiones
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        
-        // Aplicar configuración para mejor calidad de renderizado
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        // Escalar el contexto para mantener las proporciones correctas
-        ctx.scale(scaleFactor, scaleFactor);
+            // Aumentamos la escala para mejor resolución (factor de 2)
+            const scaleFactor = 2;
+            const mmToPx = 3.77953 * scaleFactor;
+            
+            const canvasWidth = globalUpdatedDesign.widthMM * mmToPx;
+            const canvasHeight = globalUpdatedDesign.heightMM * mmToPx;
+            
+            // Configurar el canvas con las nuevas dimensiones
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            // Aplicar configuración para mejor calidad de renderizado
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // Escalar el contexto para mantener las proporciones correctas
+            ctx.scale(scaleFactor, scaleFactor);
 
-        // Fondo blanco por defecto
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            // Fondo blanco por defecto
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        let loadedImages = 0;
-        let totalImages = 0;
+            let loadedImages = 0;
+            let totalImages = 0;
 
-        globalUpdatedDesign.design.objects.forEach(obj => {
-            if (obj.type === 'image') totalImages++;
-        });
+            // Contar imágenes totales
+            globalUpdatedDesign.design.objects.forEach(obj => {
+                if (obj.type === 'image') totalImages++;
+            });
 
-        // Dibujar objetos en el canvas
-        globalUpdatedDesign.design.objects.forEach(obj => {
-            ctx.save();
-
-            if (obj.angle) {
-                const centerX = obj.left + (obj.width * (obj.scaleX || 1)) / 2;
-                const centerY = obj.top + (obj.height * (obj.scaleY || 1)) / 2;
-                ctx.translate(centerX, centerY);
-                ctx.rotate((obj.angle * Math.PI) / 180);
-                ctx.translate(-centerX, -centerY);
-            }
-
-            if (obj.type === 'rect') {
-                if (obj.rx && obj.ry) {
-                    roundRect(ctx, obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1), obj.rx, obj);
-                } else {
-                    if (obj.fill && obj.fill !== 'transparent') {
-                        ctx.fillStyle = obj.fill;
-                        ctx.fillRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
-                    }
-                    if (obj.stroke && obj.strokeWidth) {
-                        ctx.strokeStyle = obj.stroke;
-                        ctx.lineWidth = obj.strokeWidth;
-                        ctx.strokeRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
-                    }
-                }
-            } else if (obj.type === 'line') {
-                ctx.beginPath();
-                ctx.moveTo(obj.x1 + obj.left, obj.y1 + obj.top);
-                ctx.lineTo(obj.x2 + obj.left, obj.y2 + obj.top);
-                ctx.strokeStyle = obj.stroke || '#000';
-                ctx.lineWidth = obj.strokeWidth || 1;
-                ctx.stroke();
-            } else if (obj.type === 'textbox') {
-                const maxWidth = obj.width * (obj.scaleX || 1);
-                const maxHeight = obj.height * (obj.scaleY || 1);
-            
-                // Aumentar el tamaño base de la fuente para mejor nitidez
-                let fontSize = obj.fontSize * 0.6 || 16;
-            
-                ctx.font = `${obj.fontStyle || ''} ${obj.fontWeight || 'bold'} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
-                ctx.fillStyle = obj.fill || '#000';
-                ctx.textAlign = 'center'; // Centrado horizontal
-                ctx.textBaseline = 'middle'; // Centrado vertical
-            
-                // Mejorar la renderización del texto
-                ctx.textRendering = 'geometricPrecision';
-            
-                // Dividir el texto en líneas si excede el ancho máximo
-                const words = obj.text.split(' ');
-                let line = '';
-                const lines = [];
-                const lineHeight = fontSize * 1.2; // Espaciado entre líneas
-            
-                words.forEach(word => {
-                    const testLine = line + (line ? ' ' : '') + word;
-                    const metrics = ctx.measureText(testLine);
-                    if (metrics.width > maxWidth && line !== '') {
-                        lines.push(line);
-                        line = word;
-                    } else {
-                        line = testLine;
-                    }
-                });
-            
-                lines.push(line);
-            
-                // Calcular la posición inicial para centrar el texto verticalmente
-                const totalHeight = lines.length * lineHeight;
-                let startY = obj.top + maxHeight / 2 - totalHeight / 2;
-            
-                // Dibujar cada línea centrada
-                lines.forEach(line => {
-                    ctx.fillText(line, obj.left + maxWidth / 2, startY + lineHeight / 2);
-                    startY += lineHeight;
-                });
-            }
-             else if (obj.type === 'image') {
-                const img = new Image();
-                img.src = obj.src;
-                
-                // Configurar la calidad de la imagen
-                img.setAttribute('rendering', 'crisp-edges');
-                
-                img.onload = () => {
-                    ctx.drawImage(
-                        img,
-                        obj.left,
-                        obj.top,
-                        obj.width * (obj.scaleX || 1),
-                        obj.height * (obj.scaleY || 1)
-                    );
+            // Crear una promesa para manejar la carga de todas las imágenes
+            const renderPromise = new Promise((resolveImages) => {
+                const checkAllImagesLoaded = async () => {
                     loadedImages++;
                     if (loadedImages === totalImages) {
-                        resolve(canvas.toDataURL('image/png', 1.0)); // Máxima calidad
+                        try {
+                            // Usamos el QR global ya generado
+                            let qrDataUrl = globalGeneratedQRCode;
+
+                            // Si tenemos un QR válido, lo dibujamos
+                            if (qrDataUrl) {
+                                const qrImg = new Image();
+                                qrImg.src = qrDataUrl;
+                                
+                                await new Promise((resolve) => {
+                                    qrImg.onload = () => {
+                                        // Aquí buscamos la última imagen en el diseño y la colocamos debajo
+                                        let lastImage = null;
+                                        globalUpdatedDesign.design.objects.forEach(obj => {
+                                            if (obj.type === 'image') {
+                                                lastImage = obj;
+                                            }
+                                        });
+                            
+                                        // Si encontramos la imagen, calculamos su posición y la del QR
+                                        if (lastImage) {
+                                            const qrWidth = (canvasWidth / scaleFactor) * 0.3;  // Definir el tamaño del QR
+                                            const qrHeight = qrWidth;  // Mantener la misma altura que el ancho
+                                            const qrX = 12;  // Colocamos el QR alineado a la izquierda
+                                            const qrY = (lastImage.top + lastImage.height * (lastImage.scaleY || 1)) / scaleFactor + 30;  // Posición debajo de la imagen
+                            
+                                            ctx.drawImage(qrImg, qrX, qrY, qrWidth, qrHeight);  // Dibujar el QR
+                                        }
+                            
+                                        resolve();
+                                    };
+                                    qrImg.onerror = resolve; // Continuar incluso si falla la carga del QR
+                                });
+                            }
+                            
+                            
+                            resolveImages(canvas.toDataURL('image/png', 1.0));
+                        } catch (error) {
+                            console.error('Error en el proceso final:', error);
+                            resolveImages(canvas.toDataURL('image/png', 1.0));
+                        }
                     }
                 };
-                img.onerror = reject;
-            }
 
-            ctx.restore();
-        });
+                // Dibujar objetos en el canvas
+                globalUpdatedDesign.design.objects.forEach(obj => {
+                    ctx.save();
 
-        if (totalImages === 0) {
-            resolve(canvas.toDataURL('image/png', 1.0)); // Máxima calidad
+                    if (obj.angle) {
+                        const centerX = obj.left + (obj.width * (obj.scaleX || 1)) / 2;
+                        const centerY = obj.top + (obj.height * (obj.scaleY || 1)) / 2;
+                        ctx.translate(centerX, centerY);
+                        ctx.rotate((obj.angle * Math.PI) / 180);
+                        ctx.translate(-centerX, -centerY);
+                    }
+
+                    switch (obj.type) {
+                        case 'rect':
+                            if (obj.rx && obj.ry) {
+                                roundRect(ctx, obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1), obj.rx, obj);
+                            } else {
+                                if (obj.fill && obj.fill !== 'transparent') {
+                                    ctx.fillStyle = obj.fill;
+                                    ctx.fillRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
+                                }
+                                if (obj.stroke && obj.strokeWidth) {
+                                    ctx.strokeStyle = obj.stroke;
+                                    ctx.lineWidth = obj.strokeWidth;
+                                    ctx.strokeRect(obj.left, obj.top, obj.width * (obj.scaleX || 1), obj.height * (obj.scaleY || 1));
+                                }
+                            }
+                            if (totalImages === 0) checkAllImagesLoaded();
+                            break;
+
+                        case 'line':
+                            ctx.beginPath();
+                            ctx.moveTo(obj.x1 + obj.left, obj.y1 + obj.top);
+                            ctx.lineTo(obj.x2 + obj.left, obj.y2 + obj.top);
+                            ctx.strokeStyle = obj.stroke || '#000';
+                            ctx.lineWidth = obj.strokeWidth || 1;
+                            ctx.stroke();
+                            if (totalImages === 0) checkAllImagesLoaded();
+                            break;
+
+                        case 'textbox':
+                            drawTextWithAutoWrap(ctx, obj);
+                            if (totalImages === 0) checkAllImagesLoaded();
+                            break;
+
+                        case 'image':
+                            const img = new Image();
+                            img.src = obj.src;
+                            img.setAttribute('rendering', 'crisp-edges');
+                            
+                            img.onload = () => {
+                                ctx.drawImage(
+                                    img,
+                                    obj.left,
+                                    obj.top,
+                                    obj.width * (obj.scaleX || 1),
+                                    obj.height * (obj.scaleY || 1)
+                                );
+                                checkAllImagesLoaded();
+                            };
+                            img.onerror = () => {
+                                console.warn('Error al cargar imagen:', obj.src);
+                                checkAllImagesLoaded();
+                            };
+                            break;
+                    }
+
+                    ctx.restore();
+                });
+
+                // Si no hay imágenes, verificar la carga inmediatamente
+                if (totalImages === 0) {
+                    checkAllImagesLoaded();
+                }
+            });
+
+            // Resolver la promesa principal cuando se complete el renderizado
+            const finalImage = await renderPromise;
+            resolve(finalImage);
+
+        } catch (error) {
+            console.error("Error al generar la imagen:", error);
+            reject(error);
         }
     });
 }
+
+
 
 // Función auxiliar para dibujar rectángulos redondeados
 function roundRect(ctx, x, y, width, height, radius, obj) {
@@ -525,7 +600,7 @@ function generateImageFromSavedDesign() {
                 // Cuando se han cargado todas las imágenes, imprimimos la imagen generada
                 if (loadedImages === totalImages) {
                     const generatedImage = canvas.toDataURL('image/png');
-                    console.log('Imagen generada desde el diseño original:', generatedImage);
+                    //console.log('Imagen generada desde el diseño original:', generatedImage);
                 }
             };
             img.onerror = () => {

@@ -169,6 +169,93 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Diseño y tamaño guardado en localStorage');
   });
 
+  // Función para descargar el diseño en formato JSON
+  document.getElementById('downloadDesignJson').addEventListener('click', () => {
+    const savedDesign = localStorage.getItem('savedDesign');
+    if (savedDesign) {
+      try {
+        const savedData = JSON.parse(savedDesign);
+
+        // Crear un objeto que incluya tanto el diseño como las dimensiones
+        const designData = {
+          design: savedData.design,
+          widthMM: savedData.widthMM,
+          heightMM: savedData.heightMM
+        };
+
+        // Convertir el diseño a una cadena JSON
+        const designJson = JSON.stringify(designData, null, 2); // Indentación de 2 espacios
+
+        // Crear un enlace de descarga
+        const link = document.createElement('a');
+        const blob = new Blob([designJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        link.href = url;
+        link.download = 'diseño.json';  // Nombre del archivo a descargar
+        link.click();  // Iniciar la descarga
+
+        // Liberar el objeto URL
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error al generar el archivo JSON para la descarga:', error);
+      }
+    } else {
+      console.log('No hay diseño guardado para descargar');
+    }
+  });
+
+
+  // Función para cargar el diseño desde un archivo JSON y guardarlo en localStorage
+  document.getElementById('loadDesign').addEventListener('click', () => {
+    // Crear un input para seleccionar un archivo JSON
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json'; // Solo archivos JSON
+
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            // Parsear el contenido del archivo JSON
+            const designData = JSON.parse(event.target.result);
+
+            // Verificar si el archivo tiene el formato correcto
+            if (designData && designData.design && designData.widthMM && designData.heightMM) {
+              // Restaurar el diseño en el lienzo
+              canvas.loadFromJSON(designData.design, canvas.renderAll.bind(canvas));
+
+              // Ajustar el tamaño del lienzo
+              canvas.setWidth(designData.widthMM * 3.77953);
+              canvas.setHeight(designData.heightMM * 3.77953);
+
+              // Actualizar los campos de tamaño
+              document.getElementById('width').value = designData.widthMM;
+              document.getElementById('height').value = designData.heightMM;
+
+              // Guardar el diseño en localStorage
+              localStorage.setItem('savedDesign', event.target.result);
+
+              console.log('Diseño cargado y guardado en localStorage exitosamente');
+            } else {
+              console.error('El archivo JSON no tiene el formato esperado');
+            }
+          } catch (error) {
+            console.error('Error al cargar el archivo JSON:', error);
+          }
+        };
+        reader.readAsText(file); // Leer el archivo como texto
+      }
+    };
+
+    input.click(); // Abrir el cuadro de diálogo de selección de archivos
+  });
+
+
+
+
   // Función para previsualizar el diseño como imagen
   document.getElementById('previewDesign').addEventListener('click', () => {
     const savedDesign = localStorage.getItem('savedDesign');
